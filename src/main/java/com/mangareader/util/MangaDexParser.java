@@ -35,9 +35,16 @@ public class MangaDexParser {
     }
 
     /**
-     * Parse a single manga detail response
+     * Parse a single manga detail response (with direct cover URL)
      */
     public ObjectNode parseMangaDetail(String mangaJson, String coverJson) throws Exception {
+        return parseMangaDetail(mangaJson, coverJson, null);
+    }
+
+    /**
+     * Parse a single manga detail response (with optional proxy)
+     */
+    public ObjectNode parseMangaDetail(String mangaJson, String coverJson, String proxyBaseUrl) throws Exception {
         JsonNode mangaRoot = mapper.readTree(mangaJson);
         JsonNode mangaData = mangaRoot.get("data");
 
@@ -51,8 +58,16 @@ public class MangaDexParser {
                 String mangaId = getTextValue(mangaData, "id");
                 String coverFileName = getTextValue(coverData.get("attributes"), "fileName");
                 if (coverFileName != null && !coverFileName.isEmpty()) {
-                    String coverUrl = String.format("https://uploads.mangadex.org/covers/%s/%s",
-                            mangaId, coverFileName);
+                    String coverUrl;
+                    if (proxyBaseUrl != null && !proxyBaseUrl.isEmpty()) {
+                        // Use proxy URL
+                        coverUrl = String.format("%s/proxy/mangadex/cover/%s/%s",
+                                proxyBaseUrl, mangaId, coverFileName);
+                    } else {
+                        // Use direct URL
+                        coverUrl = String.format("https://uploads.mangadex.org/covers/%s/%s",
+                                mangaId, coverFileName);
+                    }
                     result.put("cover", coverUrl);
                 }
             }
@@ -170,6 +185,7 @@ public class MangaDexParser {
 
     /**
      * Parse chapter pages (at-home server response)
+     * Returns direct MangaDex URLs
      */
     public ArrayNode parseChapterPages(String jsonResponse) throws Exception {
         JsonNode root = mapper.readTree(jsonResponse);
@@ -188,6 +204,32 @@ public class MangaDexParser {
                     String pageUrl = String.format("%s/data/%s/%s",
                             baseUrl, hash, filename.asText());
                     pages.add(pageUrl);
+                }
+            }
+        }
+
+        return pages;
+    }
+
+    /**
+     * Parse chapter pages with proxy URLs
+     * Returns filenames that should be used with the proxy endpoint
+     */
+    public ArrayNode parseChapterPagesWithProxy(String jsonResponse, String chapterId, String proxyBaseUrl)
+            throws Exception {
+        JsonNode root = mapper.readTree(jsonResponse);
+        JsonNode chapter = root.get("chapter");
+
+        ArrayNode pages = mapper.createArrayNode();
+
+        if (chapter != null) {
+            JsonNode dataArray = chapter.get("data");
+
+            if (dataArray != null && dataArray.isArray()) {
+                for (JsonNode filename : dataArray) {
+                    String proxyUrl = String.format("%s/proxy/mangadex/%s/%s",
+                            proxyBaseUrl, chapterId, filename.asText());
+                    pages.add(proxyUrl);
                 }
             }
         }

@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.mangareader.util.HttpClient;
 import com.mangareader.util.MangaDexParser;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +23,9 @@ public class MangaController {
     private final HttpClient httpClient;
     private final MangaDexParser parser;
     private final ObjectMapper mapper;
+
+    @Value("${app.proxy.base-url}")
+    private String proxyBaseUrl;
 
     public MangaController(HttpClient httpClient, MangaDexParser parser, ObjectMapper mapper) {
         this.httpClient = httpClient;
@@ -70,10 +74,11 @@ public class MangaController {
                             if (attributes != null && attributes.has("fileName")) {
                                 String fileName = attributes.get("fileName").asText();
                                 String mangaId = manga.get("id").asText();
-                                String fullCoverUrl = String.format(
-                                        "https://uploads.mangadex.org/covers/%s/%s",
-                                        mangaId, fileName);
-                                manga.put("cover", fullCoverUrl);
+                                // Use proxy URL for cover
+                                String proxyCoverUrl = String.format(
+                                        "%s/proxy/mangadex/cover/%s/%s",
+                                        proxyBaseUrl, mangaId, fileName);
+                                manga.put("cover", proxyCoverUrl);
                             }
                         }
                     } catch (Exception e) {
@@ -146,8 +151,8 @@ public class MangaController {
                 }
             }
 
-            // Parse and merge
-            ObjectNode result = parser.parseMangaDetail(mangaResponse, coverResponse);
+            // Parse and merge (with proxy URL for cover)
+            ObjectNode result = parser.parseMangaDetail(mangaResponse, coverResponse, proxyBaseUrl);
 
             // Remove coverId from final response
             result.remove("coverId");
@@ -194,11 +199,15 @@ public class MangaController {
     }
 
     /**
-     * Get chapter pages
+     * Get chapter pages with proxy URLs
      * GET /api/manga/chapter/{chapterId}/pages
+     * GET /api/manga/chapter/{chapterId}/pages?useProxy=true (default)
+     * GET /api/manga/chapter/{chapterId}/pages?useProxy=false (direct URLs)
      */
     @GetMapping("/chapter/{chapterId}/pages")
-    public ResponseEntity<?> getChapterPages(@PathVariable String chapterId) {
+    public ResponseEntity<?> getChapterPages(
+            @PathVariable String chapterId,
+            @RequestParam(required = false, defaultValue = "true") boolean useProxy) {
         try {
             if (chapterId == null || chapterId.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -209,12 +218,18 @@ public class MangaController {
             String atHomeUrl = "https://api.mangadex.org/at-home/server/" + chapterId;
             String atHomeResponse = httpClient.get(atHomeUrl);
 
-            // Parse page URLs
-            ArrayNode pages = parser.parseChapterPages(atHomeResponse);
+            // Parse page URLs (proxy or direct)
+            ArrayNode pages;
+            if (useProxy) {
+                pages = parser.parseChapterPagesWithProxy(atHomeResponse, chapterId, proxyBaseUrl);
+            } else {
+                pages = parser.parseChapterPages(atHomeResponse);
+            }
 
             // Build response
             Map<String, Object> result = new HashMap<>();
             result.put("pages", pages);
+            result.put("useProxy", useProxy);
 
             return ResponseEntity.ok(result);
 

@@ -183,7 +183,25 @@ fetch(`http://localhost:8080/api/manga/chapter/${chapterId}/pages`)
   .then((data) => console.log(data));
 ```
 
-**Success Response (200 OK):**
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| useProxy | boolean | true | If true, returns proxy URLs; if false, returns direct MangaDex URLs |
+
+**Success Response (200 OK) - With Proxy (Recommended):**
+
+```json
+{
+  "pages": [
+    "http://localhost:8080/proxy/mangadex/e199f8e6-4eb4-4553-9b9e-0e3f2d7e7c5d/x1-abc123.jpg",
+    "http://localhost:8080/proxy/mangadex/e199f8e6-4eb4-4553-9b9e-0e3f2d7e7c5d/x2-def456.jpg",
+    "http://localhost:8080/proxy/mangadex/e199f8e6-4eb4-4553-9b9e-0e3f2d7e7c5d/x3-ghi789.jpg"
+  ],
+  "useProxy": true
+}
+```
+
+**Success Response (200 OK) - Direct URLs:**
 
 ```json
 {
@@ -191,7 +209,8 @@ fetch(`http://localhost:8080/api/manga/chapter/${chapterId}/pages`)
     "https://uploads.mangadex.org/data/abc123/x1-page1.jpg",
     "https://uploads.mangadex.org/data/abc123/x2-page2.jpg",
     "https://uploads.mangadex.org/data/abc123/x3-page3.jpg"
-  ]
+  ],
+  "useProxy": false
 }
 ```
 
@@ -203,6 +222,82 @@ fetch(`http://localhost:8080/api/manga/chapter/${chapterId}/pages`)
   "status": 400
 }
 ```
+
+---
+
+### 5. Proxy Manga Page Image
+
+**🔥 NEW:** Proxy endpoint to fetch manga page images server-side, bypassing MangaDex anti-hotlinking. This prevents the "Read on MangaDex" placeholder from appearing.
+
+**Endpoint:** `GET /proxy/mangadex/{chapterId}/{filename}`
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| chapterId | string | Yes | The MangaDex chapter ID |
+| filename | string | Yes | The image filename (e.g., "x1-abc123.jpg") |
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| dataSaver | boolean | false | If true, fetches compressed images for lower bandwidth |
+
+**Example Request:**
+
+```javascript
+const chapterId = "e199f8e6-4eb4-4553-9b9e-0e3f2d7e7c5d";
+const filename = "x1-abc123.jpg";
+
+// Display in an <img> tag
+<img
+  src={`http://localhost:8080/proxy/mangadex/${chapterId}/${filename}`}
+  alt="Page"
+/>;
+
+// Or fetch directly
+fetch(`http://localhost:8080/proxy/mangadex/${chapterId}/${filename}`)
+  .then((response) => response.blob())
+  .then((blob) => {
+    const imageUrl = URL.createObjectURL(blob);
+    document.getElementById("manga-page").src = imageUrl;
+  });
+```
+
+**Success Response (200 OK):**
+
+Returns the actual image bytes with appropriate headers:
+
+- `Content-Type: image/jpeg`, `image/png`, or `image/webp`
+- `Cache-Control: public, max-age=86400` (24 hours browser cache)
+- `Content-Length: <size>`
+
+**Error Response (404 Not Found):**
+
+```json
+{
+  "error": "Filename not found in chapter data",
+  "status": 404
+}
+```
+
+**Error Response (502 Bad Gateway):**
+
+```json
+{
+  "error": "Failed to connect to MangaDex servers",
+  "status": 502
+}
+```
+
+**Features:**
+
+- ✅ Server-side image fetching with proper headers (`Referer`, `User-Agent`)
+- ✅ Bypasses MangaDex anti-hotlinking protection
+- ✅ At-Home server data cached for 3 minutes
+- ✅ Image bytes streamed directly (not cached)
+- ✅ Browser-side caching enabled (24 hours)
+- ✅ Automatic content-type detection
+- ✅ Support for data-saver mode (compressed images)
 
 ---
 
