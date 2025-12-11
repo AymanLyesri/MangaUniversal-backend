@@ -193,6 +193,37 @@ public class MangaController {
         }
     }
 
+    /**
+     * Get chapter pages
+     * GET /api/manga/chapter/{chapterId}/pages
+     */
+    @GetMapping("/chapter/{chapterId}/pages")
+    public ResponseEntity<?> getChapterPages(@PathVariable String chapterId) {
+        try {
+            if (chapterId == null || chapterId.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                        .body(createError(400, "Missing chapter ID"));
+            }
+
+            // Fetch chapter pages from at-home server
+            String atHomeUrl = "https://api.mangadex.org/at-home/server/" + chapterId;
+            String atHomeResponse = httpClient.get(atHomeUrl);
+
+            // Parse page URLs
+            ArrayNode pages = parser.parseChapterPages(atHomeResponse);
+
+            // Build response
+            Map<String, Object> result = new HashMap<>();
+            result.put("pages", pages);
+
+            return ResponseEntity.ok(result);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(createError(500, "Error fetching chapter pages: " + e.getMessage()));
+        }
+    }
+
     private Map<String, Object> createError(int status, String message) {
         Map<String, Object> error = new HashMap<>();
         error.put("error", message);

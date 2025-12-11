@@ -83,6 +83,27 @@ public class MangaDexParser {
             // Get tags
             ArrayNode tags = getTags(attributes.get("tags"));
             result.set("tags", tags);
+
+            // Get status (ongoing, completed, hiatus, cancelled)
+            String status = getTextValue(attributes, "status");
+            result.put("status", status != null ? status : "");
+
+            // Get year
+            JsonNode year = attributes.get("year");
+            if (year != null && !year.isNull()) {
+                result.put("year", year.asInt());
+            }
+
+            // Get content rating
+            String contentRating = getTextValue(attributes, "contentRating");
+            result.put("contentRating", contentRating != null ? contentRating : "");
+
+            // Get createdAt and updatedAt
+            String createdAt = getTextValue(attributes, "createdAt");
+            result.put("createdAt", createdAt != null ? createdAt : "");
+
+            String updatedAt = getTextValue(attributes, "updatedAt");
+            result.put("updatedAt", updatedAt != null ? updatedAt : "");
         }
 
         // Get cover ID and build URL
@@ -117,9 +138,27 @@ public class MangaDexParser {
                 if (attributes != null) {
                     String number = getTextValue(attributes, "chapter");
                     String title = getTextValue(attributes, "title");
+                    String volume = getTextValue(attributes, "volume");
+                    String translatedLanguage = getTextValue(attributes, "translatedLanguage");
+                    String publishAt = getTextValue(attributes, "publishAt");
+                    String createdAt = getTextValue(attributes, "createdAt");
+                    String updatedAt = getTextValue(attributes, "updatedAt");
 
-                    chapterObj.put("number", number != null ? number : "");
+                    chapterObj.put("chapter", number != null ? number : "");
                     chapterObj.put("title", title != null ? title : "");
+                    chapterObj.put("volume", volume != null ? volume : "");
+                    chapterObj.put("translatedLanguage", translatedLanguage != null ? translatedLanguage : "");
+                    chapterObj.put("publishAt", publishAt != null ? publishAt : "");
+                    chapterObj.put("createdAt", createdAt != null ? createdAt : "");
+                    chapterObj.put("updatedAt", updatedAt != null ? updatedAt : "");
+
+                    // Get pages count
+                    JsonNode pages = attributes.get("pages");
+                    if (pages != null && !pages.isNull()) {
+                        chapterObj.put("pages", pages.asInt());
+                    } else {
+                        chapterObj.put("pages", 0);
+                    }
                 }
 
                 chapters.add(chapterObj);
