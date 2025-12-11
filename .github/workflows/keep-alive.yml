@@ -1,0 +1,56 @@
+name: Keep Server Awake
+
+# Purpose: Automatically ping the health-check endpoint every 10 minutes
+# to prevent the server from going to sleep on free-tier hosting platforms.
+#
+# This workflow runs on GitHub's servers (free) and requires no external services.
+
+on:
+  schedule:
+    # Run every 10 minutes (cron format: minute hour day month weekday)
+    # This schedule ensures the server stays awake by pinging regularly
+    - cron: "*/10 * * * *"
+
+  # Allow manual trigger from GitHub Actions UI
+  workflow_dispatch:
+
+jobs:
+  keep-alive:
+    name: Ping Health Check Endpoint
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Health Check Ping
+        run: |
+          echo "🏓 Pinging server at $(date)"
+
+          # Replace with your actual server URL
+          # For local testing, use: http://localhost:8080/healthcheck
+          # For production, use: https://your-domain.com/healthcheck
+          SERVER_URL="${{ secrets.SERVER_URL || 'https://your-server-url.com/healthcheck' }}"
+
+          # Send GET request with curl
+          response=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$SERVER_URL")
+
+          if [ "$response" -eq 200 ]; then
+            echo "✅ Server is awake! HTTP Status: $response"
+            echo "Server responded successfully at $(date)"
+          else
+            echo "⚠️ Warning: Server returned HTTP Status: $response"
+            echo "This might indicate an issue, but won't fail the workflow"
+          fi
+
+      - name: Log Completion
+        run: |
+          echo "🎯 Keep-alive ping completed at $(date)"
+          echo "Next ping scheduled in 10 minutes"
+
+      - name: Optional - Verify Health Status
+        continue-on-error: true
+        run: |
+          echo "🔍 Fetching detailed health status..."
+
+          SERVER_URL="${{ secrets.SERVER_URL || 'https://your-server-url.com/healthcheck' }}"
+
+          # Get full response body for logging
+          curl -s "$SERVER_URL" || echo "Could not fetch detailed status"

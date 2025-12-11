@@ -4,9 +4,72 @@ Base URL: `http://localhost:8080`
 
 ## Table of Contents
 
+- [Health Check Endpoints](#health-check-endpoints)
 - [Manga Endpoints](#manga-endpoints)
 - [Response Models](#response-models)
 - [Error Handling](#error-handling)
+
+---
+
+## Health Check Endpoints
+
+### Health Check
+
+Simple health check endpoint used for monitoring and keeping the server awake.
+
+**Endpoint:** `GET /healthcheck`
+
+**Example Request:**
+
+```bash
+curl http://localhost:8080/healthcheck
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "status": "OK",
+  "message": "Server is running",
+  "timestamp": "2025-12-11 10:30:00",
+  "uptime": "healthy"
+}
+```
+
+**Purpose:** This endpoint is automatically pinged every 10 minutes by GitHub Actions to prevent the server from sleeping on free-tier hosting platforms.
+
+---
+
+### Detailed Health Status
+
+Get detailed server health information including memory usage and system info.
+
+**Endpoint:** `GET /healthcheck/status`
+
+**Example Request:**
+
+```bash
+curl http://localhost:8080/healthcheck/status
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "status": "OK",
+  "timestamp": "2025-12-11 10:30:00",
+  "server": "manga-universal-backend",
+  "version": "1.0.0",
+  "memory": {
+    "used": "128 MB",
+    "max": "512 MB"
+  },
+  "system": {
+    "javaVersion": "21.0.9",
+    "osName": "Linux"
+  }
+}
+```
 
 ---
 
