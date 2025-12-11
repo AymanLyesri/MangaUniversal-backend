@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.mangareader.dto.PopularMangaResponseDTO;
+import com.mangareader.service.MangaDexService;
 import com.mangareader.util.HttpClient;
 import com.mangareader.util.MangaDexParser;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,14 +25,61 @@ public class MangaController {
     private final HttpClient httpClient;
     private final MangaDexParser parser;
     private final ObjectMapper mapper;
+    private final MangaDexService mangaDexService;
 
     @Value("${app.proxy.base-url}")
     private String proxyBaseUrl;
 
-    public MangaController(HttpClient httpClient, MangaDexParser parser, ObjectMapper mapper) {
+    public MangaController(HttpClient httpClient, MangaDexParser parser, ObjectMapper mapper, 
+                          MangaDexService mangaDexService) {
         this.httpClient = httpClient;
         this.parser = parser;
         this.mapper = mapper;
+        this.mangaDexService = mangaDexService;
+    }
+
+    /**
+     * Get popular manga with pagination
+     * GET /api/manga/popular?limit={limit}&offset={offset}&order={order}&sortBy={sortBy}
+     * 
+     * @param limit Number of results per page (default: 20)
+     * @param offset Pagination offset (default: 0)
+     * @param order Sort order: "asc" or "desc" (default: "desc")
+     * @param sortBy Sort field (default: "followedCount")
+     * @return PopularMangaResponseDTO with total, limit, offset, and results
+     */
+    @GetMapping("/popular")
+    public ResponseEntity<?> getPopularManga(
+            @RequestParam(required = false, defaultValue = "20") Integer limit,
+            @RequestParam(required = false, defaultValue = "0") Integer offset,
+            @RequestParam(required = false, defaultValue = "desc") String order,
+            @RequestParam(required = false, defaultValue = "followedCount") String sortBy) {
+        try {
+            // Validate parameters
+            if (limit < 1 || limit > 100) {
+                return ResponseEntity.badRequest()
+                        .body(createError(400, "Limit must be between 1 and 100"));
+            }
+            
+            if (offset < 0) {
+                return ResponseEntity.badRequest()
+                        .body(createError(400, "Offset must be 0 or greater"));
+            }
+            
+            if (!"asc".equals(order) && !"desc".equals(order)) {
+                return ResponseEntity.badRequest()
+                        .body(createError(400, "Order must be 'asc' or 'desc'"));
+            }
+
+            // Fetch popular manga from service
+            PopularMangaResponseDTO response = mangaDexService.getPopularManga(limit, offset, order, sortBy);
+            
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(createError(500, "Error fetching popular manga: " + e.getMessage()));
+        }
     }
 
     /**

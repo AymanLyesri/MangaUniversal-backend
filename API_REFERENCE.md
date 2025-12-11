@@ -75,7 +75,110 @@ curl http://localhost:8080/healthcheck/status
 
 ## Manga Endpoints
 
-### 1. Search Manga
+### 1. Get Popular Manga
+
+Get a paginated list of popular manga sorted by follower count.
+
+**Endpoint:** `GET /api/manga/popular`
+
+**Query Parameters:**
+| Parameter | Type | Default | Required | Description |
+|-----------|------|---------|----------|-------------|
+| limit | integer | 20 | No | Number of results per page (1-100) |
+| offset | integer | 0 | No | Pagination offset (≥0) |
+| order | string | "desc" | No | Sort order: "asc" or "desc" |
+| sortBy | string | "followedCount" | No | Field to sort by (e.g., "followedCount", "createdAt") |
+
+**Example Request:**
+
+```javascript
+// Get top 10 popular manga
+fetch("http://localhost:8080/api/manga/popular?limit=10&offset=0")
+  .then((response) => response.json())
+  .then((data) => console.log(data));
+
+// Get next page with custom sorting
+fetch("http://localhost:8080/api/manga/popular?limit=20&offset=20&order=asc")
+  .then((response) => response.json())
+  .then((data) => console.log(data));
+```
+
+**Success Response (200 OK):**
+
+```json
+{
+  "total": 89195,
+  "limit": 10,
+  "offset": 0,
+  "results": [
+    {
+      "id": "32d76d19-8a05-4db0-9fc2-e0b0648fe9d0",
+      "title": "Na Honjaman Level-Up",
+      "description": "10 years ago, after \"the Gate\" that connected the real world...",
+      "followers": 316046,
+      "coverUrl": "http://localhost:8080/proxy/mangadex/cover/32d76d19-8a05-4db0-9fc2-e0b0648fe9d0/e6583e52-1125-4c50-8db4-e8d6cf3fb144"
+    },
+    {
+      "id": "aa6c76f7-5f5f-46b6-a800-911145f81b9b",
+      "title": "Sono Bisque Doll wa Koi o Suru",
+      "description": "Wakana Gojou is a fifteen year old high-school boy...",
+      "followers": 245847,
+      "coverUrl": "http://localhost:8080/proxy/mangadex/cover/aa6c76f7-5f5f-46b6-a800-911145f81b9b/6ce2e9a4-deb7-4646-b479-cd658985a3e8"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+
+**400 Bad Request - Invalid Limit:**
+
+```json
+{
+  "error": "Limit must be between 1 and 100",
+  "status": 400
+}
+```
+
+**400 Bad Request - Invalid Offset:**
+
+```json
+{
+  "error": "Offset must be 0 or greater",
+  "status": 400
+}
+```
+
+**400 Bad Request - Invalid Order:**
+
+```json
+{
+  "error": "Order must be 'asc' or 'desc'",
+  "status": 400
+}
+```
+
+**500 Internal Server Error:**
+
+```json
+{
+  "error": "Error fetching popular manga: <error details>",
+  "status": 500
+}
+```
+
+**Features:**
+
+- ✅ Fetches data from MangaDex API with follower statistics
+- ✅ Spring WebClient with reactive HTTP calls
+- ✅ 30-second timeout with proper error handling
+- ✅ Graceful handling of missing fields (description, cover)
+- ✅ Proxy URL support for cover images
+- ✅ Clean layered architecture (Controller → Service → DTOs)
+
+---
+
+### 2. Search Manga
 
 Search for manga by title.
 
@@ -122,7 +225,7 @@ fetch("http://localhost:8080/api/manga/search?q=One%20Piece")
 
 ---
 
-### 2. Get Manga Details
+### 3. Get Manga Details
 
 Get detailed information about a specific manga.
 
@@ -169,7 +272,7 @@ fetch(`http://localhost:8080/api/manga/${mangaId}`)
 
 ---
 
-### 3. Get Manga Chapters
+### 4. Get Manga Chapters
 
 Get the list of chapters for a specific manga.
 
@@ -226,7 +329,7 @@ fetch(`http://localhost:8080/api/manga/${mangaId}/chapters`)
 
 ---
 
-### 4. Get Chapter Pages
+### 5. Get Chapter Pages
 
 Get the page URLs for a specific chapter.
 
@@ -288,9 +391,9 @@ fetch(`http://localhost:8080/api/manga/chapter/${chapterId}/pages`)
 
 ---
 
-### 5. Proxy Manga Page Image
+### 6. Proxy Manga Page Image
 
-**🔥 NEW:** Proxy endpoint to fetch manga page images server-side, bypassing MangaDex anti-hotlinking. This prevents the "Read on MangaDex" placeholder from appearing.
+Proxy endpoint to fetch manga page images server-side, bypassing MangaDex anti-hotlinking. This prevents the "Read on MangaDex" placeholder from appearing.
 
 **Endpoint:** `GET /proxy/mangadex/{chapterId}/{filename}`
 
@@ -365,6 +468,25 @@ Returns the actual image bytes with appropriate headers:
 ---
 
 ## Response Models
+
+### Popular Manga Response
+
+```typescript
+interface PopularMangaResponse {
+  total: number; // Total number of manga in database
+  limit: number; // Number of results returned
+  offset: number; // Pagination offset
+  results: MangaItem[]; // Array of manga items
+}
+
+interface MangaItem {
+  id: string;
+  title: string;
+  description: string | null; // May be null if not available
+  followers: number | null; // Number of followers (may be null)
+  coverUrl: string | null; // Proxy URL for cover image (may be null)
+}
+```
 
 ### Manga Search Result
 
@@ -441,6 +563,20 @@ interface ErrorResponse {
 const BASE_URL = "http://localhost:8080/api";
 
 export const mangaApi = {
+  // Get popular manga
+  getPopularManga: async (
+    limit: number = 20,
+    offset: number = 0,
+    order: "asc" | "desc" = "desc",
+    sortBy: string = "followedCount"
+  ) => {
+    const response = await fetch(
+      `${BASE_URL}/manga/popular?limit=${limit}&offset=${offset}&order=${order}&sortBy=${sortBy}`
+    );
+    if (!response.ok) throw new Error("Failed to fetch popular manga");
+    return response.json();
+  },
+
   // Search manga
   searchManga: async (query: string) => {
     const response = await fetch(
@@ -476,6 +612,28 @@ export const mangaApi = {
 ### Vanilla JavaScript Example
 
 ```javascript
+// Get popular manga
+async function getPopularManga(limit = 20, offset = 0) {
+  try {
+    const response = await fetch(
+      `http://localhost:8080/api/manga/popular?limit=${limit}&offset=${offset}`
+    );
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log(`Total manga: ${data.total}`);
+      console.log(`Showing ${data.results.length} results`);
+      return data.results;
+    } else {
+      console.error(data.error);
+      return [];
+    }
+  } catch (error) {
+    console.error("Failed to fetch popular manga:", error);
+    return [];
+  }
+}
+
 // Search for manga
 async function searchManga(query) {
   try {
