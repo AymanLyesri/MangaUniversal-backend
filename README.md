@@ -201,7 +201,36 @@ curl "http://localhost:8080/api/chapter/CHAPTER_ID/pages"
 
 ---
 
-## 📦 Deployment to Vercel
+## 🚢 Deployment
+
+### Quick Start
+
+For production deployment, you **must** set the `APP_PROXY_BASE_URL` environment variable to your server's public URL:
+
+```bash
+# Example for Docker
+docker run -p 8080:8080 -e APP_PROXY_BASE_URL=https://your-domain.com manga-backend
+
+# Example for Render/Railway/etc.
+APP_PROXY_BASE_URL=https://your-app.onrender.com
+```
+
+> ⚠️ **Important:** Without this variable, image proxy URLs will default to `http://localhost:8080`, which won't work in production.
+
+### Deployment Guides
+
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for detailed guides for:
+- 🐳 Docker & Docker Compose
+- ☁️ Render
+- 🚂 Railway
+- 🟣 Heroku
+- 🌐 Google Cloud Run
+- 📦 AWS Elastic Beanstalk
+- ⚡ Kubernetes
+
+---
+
+## 📦 Vercel Deployment (Alternative)
 
 ### First-time Deployment
 
@@ -217,15 +246,12 @@ curl "http://localhost:8080/api/chapter/CHAPTER_ID/pages"
    vercel login
    ```
 
-3. **Deploy**:
+3. **Set environment variable**:
+   - Go to Vercel Dashboard → Project Settings → Environment Variables
+   - Add: `APP_PROXY_BASE_URL` = `https://your-vercel-app.vercel.app`
 
-   ```bash
-   vercel
-   ```
+4. **Deploy**:
 
-   Follow the prompts to link the project to your Vercel account.
-
-4. **Deploy to Production**:
    ```bash
    vercel --prod
    ```
@@ -257,7 +283,30 @@ spring.web.cors.allowed-headers=*
 
 # Jackson Configuration
 spring.jackson.default-property-inclusion=non_null
+
+# Proxy Configuration
+# Set APP_PROXY_BASE_URL environment variable in production
+app.proxy.base-url=${APP_PROXY_BASE_URL:http://localhost:8080}
 ```
+
+### Environment Variables
+
+For production deployment, set the following environment variable:
+
+- **`APP_PROXY_BASE_URL`**: The base URL of your deployed server (e.g., `https://your-domain.com` or `https://your-app.onrender.com`)
+  - This is used to generate proxy URLs for manga cover images and chapter pages
+  - If not set, defaults to `http://localhost:8080` for local development
+
+**Example for Docker:**
+```bash
+docker run -p 8080:8080 -e APP_PROXY_BASE_URL=https://your-domain.com your-image
+```
+
+**Example for deployment platforms:**
+- Render: Set in Environment Variables section
+- Railway: Set in Variables tab
+- Heroku: `heroku config:set APP_PROXY_BASE_URL=https://your-app.herokuapp.com`
+- Docker Compose: Add to `environment` section
 
 ### vercel.json
 

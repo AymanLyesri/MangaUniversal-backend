@@ -1,6 +1,10 @@
 # Manga Universal Backend - API Reference
 
-Base URL: `http://localhost:8080`
+**Base URL:** 
+- Local: `http://localhost:8080`
+- Production: Set via `APP_PROXY_BASE_URL` environment variable (e.g., `https://your-domain.com`)
+
+> **Note:** In production, make sure to set the `APP_PROXY_BASE_URL` environment variable to your server's public URL. This ensures that proxy URLs for images are generated correctly.
 
 ## Table of Contents
 
